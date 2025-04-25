@@ -4,31 +4,54 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.ahmed.ponggame.ui.theme.PaddleColor
 import com.ahmed.ponggame.ui.theme.PongGameTheme
 import kotlinx.coroutines.delay
-import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,7 +60,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             PongGameTheme {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    InfiniteMovingImage()
+                    PongGame()
 
                 }
             }
@@ -46,59 +69,22 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun GameDefault() {
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val imageSize = 100.dp
+fun PongGame() {
 
-    val imageOffsetX = remember { Animatable(0f) }
-    val imageOffsetY = remember { Animatable(0f) } // Starting at a vertical offset of 300.dp
-
-    val maxOffsetXPx = with(LocalDensity.current) {
-        (screenWidth - imageSize).toPx()
-    }
-    val maxOffsetYPx = with(LocalDensity.current) {
-        (screenHeight - imageSize).toPx()
-    }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            // Move right and down
-            imageOffsetX.animateTo(
-                targetValue = maxOffsetXPx,
-                animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-            )
-            imageOffsetY.animateTo(
-                targetValue = maxOffsetYPx,
-                animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-            )
-
-            // Move left and up
-            imageOffsetX.animateTo(
-                targetValue = 0f,
-                animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-            )
-            imageOffsetY.animateTo(
-                targetValue = 300f, // Back to initial vertical position
-                animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-            )
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(id = R.drawable.ufo), // Replace with your image
-            contentDescription = null,
-            modifier = Modifier
-                .offset { IntOffset(imageOffsetX.value.toInt(), imageOffsetY.value.toInt()) }
-                .size(imageSize)
+    val infiniteTransition = rememberInfiniteTransition()
+    val buttonColor by infiniteTransition.animateColor(
+        initialValue = Color.Yellow,
+        targetValue = Color.Blue,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 5000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
         )
-    }
-}
+    )
+
+    var xVelocity by remember { mutableFloatStateOf(16f) }
+    var yVelocity by remember { mutableFloatStateOf(10f) }
 
 
-@Composable
-fun Games() {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
     val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     val imageSize = 100.dp
@@ -106,123 +92,151 @@ fun Games() {
     val imageOffsetX = remember { Animatable(0f) }
     val imageOffsetY = remember { Animatable(0f) }
 
-    val maxOffsetXPx = with(LocalDensity.current) {
-        (screenWidth - imageSize).toPx()
-    }
-    val maxOffsetYPx = with(LocalDensity.current) {
-        (screenHeight - imageSize).toPx()
-    }
+    val density = LocalDensity.current
+    val maxOffsetXPx = with(density) { (screenWidth - imageSize).toPx() }
+//    val maxOffsetYPx = with(density) { (screenHeight - imageSize).toPx() }
 
-    LaunchedEffect(Unit) {
-        while (true) {
-            // Move the image until it reaches the max width or max height
-            if (imageOffsetX.value >= maxOffsetXPx || imageOffsetY.value >= maxOffsetYPx) {
-                // Randomly decide the new position only when boundaries are hit
-                val randomX = -imageOffsetX.value// Random X position
-                val randomY = -imageOffsetY.value// Random Y position (upper half of the screen)
+    val paddleWidth = 100.dp
+    val paddleHeight = 20.dp
 
-                // Animate to random position (left and upper)
-                imageOffsetX.animateTo(
-                    targetValue = randomX,
-                    animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-                )
-                imageOffsetY.animateTo(
-                    targetValue = randomY,
-                    animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-                )
-            }else{
-                imageOffsetX.animateTo(
-                    targetValue = maxOffsetXPx,
-                    animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-                )
-                imageOffsetY.animateTo(
-                    targetValue = maxOffsetYPx,
-                    animationSpec = tween(durationMillis = 2000, easing = LinearEasing)
-                )
-            }
+    var paddleOffsetX by remember { mutableFloatStateOf(0f) }
+    var isPlaying by remember { mutableStateOf(true) }
 
-            // Continue moving until boundary is hit
+    var score by remember { mutableIntStateOf(0) }
 
-
-
-            // Optional: Delay between boundary hits to prevent too fast of a loop
-            delay(100)
+    // loop
+    LaunchedEffect(isPlaying) {
+        if (isPlaying) {
+            imageOffsetX.snapTo(0f)
+            imageOffsetY.snapTo(0f)
         }
-    }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(id = R.drawable.ufo), // Replace with your image
-            contentDescription = null,
-            modifier = Modifier
-                .offset { IntOffset(imageOffsetX.value.toInt(), imageOffsetY.value.toInt()) }
-                .size(imageSize),
-            contentScale = ContentScale.Crop
-        )
-    }
-}
-
-
-@Composable
-fun InfiniteMovingImage() {
-    var xVelocity by remember { mutableStateOf(16f) }
-    var yVelocity by remember { mutableStateOf(10f) }
-
-    // Getting the screen dimensions
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val imageSize = 100.dp // Size of the image
-
-    // Animatable positions for the image
-    val imageOffsetX = remember { Animatable(0f) }
-    val imageOffsetY = remember { Animatable(0f) }
-
-    // Convert screen size from dp to px for boundary calculations
-    val maxOffsetXPx = with(LocalDensity.current) {
-        (screenWidth - imageSize).toPx()
-    }
-    val maxOffsetYPx = with(LocalDensity.current) {
-        (screenHeight - imageSize).toPx()
-    }
-
-    var isPlaying = true
-
-    // Launch an effect to control continuous movement
-    LaunchedEffect(Unit) {
         while (isPlaying) {
-            // Update positions based on current velocity
-            imageOffsetX.snapTo(imageOffsetX.value + xVelocity) // Update position directly
-            imageOffsetY.snapTo(imageOffsetY.value + yVelocity) // Update position directly
+            imageOffsetX.snapTo(imageOffsetX.value + xVelocity)
+            imageOffsetY.snapTo(imageOffsetY.value + yVelocity)
 
-            // Check for boundary conditions and reverse the direction when hitting edges
-            if (imageOffsetX.value >= maxOffsetXPx || imageOffsetX.value <= 0) {
+            // Reflect from screen edges
+            if (imageOffsetX.value <= 0 || imageOffsetX.value >= maxOffsetXPx) {
                 xVelocity = -xVelocity
-
             }
-            if (imageOffsetY.value >= maxOffsetYPx || imageOffsetY.value <= 0) {
+
+            if (imageOffsetY.value <= 0) {
                 yVelocity = -yVelocity
             }
 
+            // Check collision with paddle
+            val paddleTop = with(density) { screenHeight.toPx() - paddleHeight.toPx() }
+            val paddleBottom = paddleTop + with(density) { paddleHeight.toPx() }
+            val paddleRight = paddleOffsetX + with(density) { paddleWidth.toPx() }
+            val paddleLeft = paddleOffsetX
 
-            // Add a small delay to create smooth movement
-            delay(16) // Delay for roughly 60 FPS
+            val ballBottom = imageOffsetY.value + with(density) { imageSize.toPx() }
+            val ballCenterX = imageOffsetX.value + with(density) { imageSize.toPx() / 2 }
+
+            if (ballBottom >= paddleTop && ballCenterX in paddleLeft..paddleRight) {
+                score += 10
+                yVelocity = -yVelocity
+
+//                val newXVelocity = Random.nextFloat() * 12f + 4f // range: 4 to 16
+                xVelocity += 4
+            }
+
+            if (ballBottom > paddleBottom + 60) {
+                isPlaying = false
+            }
+
+            delay(16)
         }
     }
 
-    Box(
-        modifier = Modifier.size(500.dp), // Box size to match the canvas size
-        contentAlignment = Alignment.TopStart
-    ) {
-        // Draw the image at the updated position
+    fun resetGame() {
+        score = 0
+        isPlaying = true
+        xVelocity = 10f
+        yVelocity = 10f
+
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        // Background
         Image(
-            painter = painterResource(id = R.drawable.ufo), // Replace with your image resource
+            modifier = Modifier.fillMaxSize(),
+            painter = painterResource(R.drawable.background_image),
+            contentScale = ContentScale.FillBounds,
+            contentDescription = null
+        )
+
+        // ufo image
+        Image(
+            painter = painterResource(R.drawable.ufo),
             contentDescription = "UFO",
             modifier = Modifier
-                .size(imageSize) // Set image size
+                .size(imageSize)
                 .offset { IntOffset(imageOffsetX.value.toInt(), imageOffsetY.value.toInt()) }
+        )
+
+        // Paddle
+        Box(
+            modifier = Modifier
+                .offset {
+                    val y = screenHeight - paddleHeight
+                    IntOffset(paddleOffsetX.toInt(), with(density) { y.toPx().toInt() })
+                }
+                .clip(CircleShape)
+                .size(paddleWidth, paddleHeight)
+                .background(PaddleColor)
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    state = rememberDraggableState { delta ->
+                        val newOffset = (paddleOffsetX + delta).coerceIn(
+                            0f, with(density) { screenWidth.toPx() - paddleWidth.toPx() }
+                        )
+                        paddleOffsetX = newOffset
+                    }
+                )
+        )
+        if (!isPlaying) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.7f))
+            )
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Game Over",
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineLarge.copy(color = Color.White)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+                    onClick = {
+                        resetGame()
+                    }) {
+                    Text(text = "Restart Game", color = Color.Black, fontSize = 18.sp)
+                }
+            }
+        }
+
+        // score ( each hit == 10 points)
+        Text(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(12.dp),
+            text = "Score: $score",
+            style = MaterialTheme.typography.headlineMedium.copy(color = Color.White)
         )
     }
 }
+
+
 
 
 
