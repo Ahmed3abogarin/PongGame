@@ -133,12 +133,12 @@ fun PongGame() {
             val ballBottom = imageOffsetY.value + with(density) { imageSize.toPx() }
             val ballCenterX = imageOffsetX.value + with(density) { imageSize.toPx() / 2 }
 
-            if (ballBottom >= paddleTop && ballCenterX in paddleLeft..paddleRight) {
+            if (ballBottom >= paddleTop - 60 && ballCenterX in paddleLeft..paddleRight) {
                 score += 10
                 yVelocity = -yVelocity
 
 //                val newXVelocity = Random.nextFloat() * 12f + 4f // range: 4 to 16
-                xVelocity += 4
+                xVelocity += 5
             }
 
             if (ballBottom > paddleBottom + 60) {
@@ -180,7 +180,7 @@ fun PongGame() {
         Box(
             modifier = Modifier
                 .offset {
-                    val y = screenHeight - paddleHeight
+                    val y = screenHeight - paddleHeight - 40.dp
                     IntOffset(paddleOffsetX.toInt(), with(density) { y.toPx().toInt() })
                 }
                 .clip(CircleShape)
